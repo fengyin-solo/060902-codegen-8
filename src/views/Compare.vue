@@ -13,9 +13,26 @@
     </div>
 
     <div v-else>
+      <div v-if="hasPersistedState" class="persist-notice card">
+        <span class="notice-icon">💾</span>
+        <span class="notice-text">已恢复上次的对比结果，您可以继续查看或重新选择</span>
+        <button class="btn btn-secondary btn-small" @click="resetCompare">🔄 重新开始</button>
+      </div>
+
       <div class="selector-section card">
-        <h3>🎯 选择对比对象</h3>
-        <p class="tip">从下方列表中选择两位联系人进行对比</p>
+        <div class="section-header">
+          <div>
+            <h3>🎯 选择对比对象</h3>
+            <p class="tip">从下方列表中选择两位联系人进行对比</p>
+          </div>
+          <button
+            v-if="hasPersistedState"
+            class="btn btn-secondary btn-small"
+            @click="resetCompare"
+          >
+            清空选择
+          </button>
+        </div>
 
         <div class="selector-grid">
           <div class="selector-col">
@@ -396,29 +413,47 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, watch } from 'vue'
 import { store } from '@/store'
 import { compareConversations, formatDuration } from '@/utils/compareAnalysis.js'
 import { LOVE_KEYWORDS } from '@/detectors/keywordDetector.js'
 
-const selectedA = ref(null)
-const selectedB = ref(null)
-const compareResult = ref(null)
+const selectedA = computed(() => store.getCompareSelectedA())
+const selectedB = computed(() => store.getCompareSelectedB())
+const compareResult = computed(() => store.compareResult)
+
+watch(
+  () => store.loveLetters,
+  () => {
+    if (store.compareResult && (!selectedA.value || !selectedB.value)) {
+      store.setCompareResult(null)
+    }
+  },
+  { deep: true }
+)
 
 const canCompare = computed(() => {
   return selectedA.value && selectedB.value && selectedA.value.conversation.id !== selectedB.value.conversation.id
 })
 
+const hasPersistedState = computed(() => {
+  return store.compareSelectedAId || store.compareSelectedBId || store.compareResult
+})
+
 function selectA(item) {
   if (selectedB.value?.conversation.id === item.conversation.id) return
-  selectedA.value = item
-  compareResult.value = null
+  store.setCompareSelectedAId(item.conversation.id)
+  store.setCompareResult(null)
 }
 
 function selectB(item) {
   if (selectedA.value?.conversation.id === item.conversation.id) return
-  selectedB.value = item
-  compareResult.value = null
+  store.setCompareSelectedBId(item.conversation.id)
+  store.setCompareResult(null)
+}
+
+function resetCompare() {
+  store.clearCompareState()
 }
 
 function getAvatar(name) {
@@ -427,10 +462,11 @@ function getAvatar(name) {
 
 function doCompare() {
   if (!canCompare.value) return
-  compareResult.value = compareConversations(
+  const result = compareConversations(
     selectedA.value.conversation,
     selectedB.value.conversation
   )
+  store.setCompareResult(result)
 }
 
 function getBarWidth(valA, valB, side) {
@@ -496,6 +532,51 @@ function getBreakdownWidth(score) {
   font-size: 1.1rem;
 }
 
+.persist-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, #fff9e6 0%, #fff5f5 100%);
+  border: 1px solid #ffe0b2;
+}
+
+.notice-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.notice-text {
+  flex: 1;
+  color: var(--text-dark);
+  font-size: 0.95rem;
+}
+
+.btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.section-header h3 {
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+.section-header .tip {
+  color: var(--text-light);
+  margin-bottom: 0;
+}
+
 .selector-section {
   margin-bottom: 2rem;
 }
@@ -507,7 +588,7 @@ function getBreakdownWidth(score) {
 
 .selector-section .tip {
   color: var(--text-light);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
 .selector-grid {
