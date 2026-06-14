@@ -3,11 +3,13 @@ import Home from '@/views/Home.vue'
 import Wall from '@/views/Wall.vue'
 import Gallery from '@/views/Gallery.vue'
 import Guess from '@/views/Guess.vue'
+import Compare from '@/views/Compare.vue'
 
 const routes = [
   { path: '/', component: Home, name: 'home' },
   { path: '/wall', component: Wall, name: 'wall' },
   { path: '/gallery', component: Gallery, name: 'gallery' },
+  { path: '/compare', component: Compare, name: 'compare' },
   { path: '/guess/:id', component: Guess, name: 'guess' }
 ]
 
